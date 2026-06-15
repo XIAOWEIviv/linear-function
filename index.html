@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>y = kx + b</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #191317;
+    --surface: #9a639e;
+    --border: #f2f0f1;
+    --grid: #e8e6e8;
+    --axis: #e2e4e5;
+    --text: #e2dfe2;
+    --text-dim: #eceeef;
+    --accent-k: #fb4c61;
+    --accent-b: #791cfb;
+    --line-color: hsl(58, 78%, 67%);
+    --line-glow: rgba(4, 14, 6, 0.3);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .equation-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.1em;
+  }
+  .equation-display .sym { color: var(--text-dim); }
+  .equation-display .val-k { color: var(--accent-k); }
+  .equation-display .val-b { color: var(--accent-b); }
+  .equation-display .var-x { color: var(--text); opacity: 0.7; }
+
+  .main-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    max-width: 960px;
+    width: 100%;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    aspect-ratio: 1;
+    max-width: 600px;
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    position: relative;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+
+  .controls {
+    width: 240px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .control-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.8rem;
+  }
+
+  .control-group .param-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .control-group .param-desc {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .control-group .param-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 0.6rem;
+  }
+
+  .k-group .param-name,
+  .k-group .param-value { color: var(--accent-k); }
+  .b-group .param-name,
+  .b-group .param-value { color: var(--accent-b); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    background: var(--border);
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: grab;
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 8px rgba(0,0,0,0.4);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: grab;
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 8px rgba(0,0,0,0.4);
+  }
+
+  .k-group input::-webkit-slider-thumb { background: var(--accent-k); }
+  .k-group input::-moz-range-thumb { background: var(--accent-k); }
+  .b-group input::-webkit-slider-thumb { background: var(--accent-b); }
+  .b-group input::-moz-range-thumb { background: var(--accent-b); }
+
+  input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.2); }
+  input[type="range"]:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.2); }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+
+  .info-card h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.8rem;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .label { color: var(--text-dim); }
+  .info-row .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .reset-btn:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  .hover-coords {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: rgba(15, 17, 23, 0.85);
+    padding: 4px 10px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  footer {
+    margin-top: 2rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+
+  @media (max-width: 720px) {
+    .main-layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .controls {
+      width: 100%;
+      max-width: 400px;
+    }
+    .canvas-wrap {
+      max-width: 100%;
+      width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Interactive Linear Function</h1>
+<div class="equation-display" id="eqDisplay"></div>
+
+<div class="main-layout">
+  <div class="canvas-wrap">
+    <canvas id="graph"></canvas>
+    <div class="hover-coords" id="hoverCoords"></div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group k-group">
+      <label>
+        <span class="param-name">k (slope)</span>
+        <span class="param-desc">drag to tilt</span>
+      </label>
+      <div class="param-value" id="kDisplay">1.00</div>
+      <input type="range" id="kSlider" min="-10" max="10" step="0.1" value="1">
+    </div>
+
+    <div class="control-group b-group">
+      <label>
+        <span class="param-name">b (intercept)</span>
+        <span class="param-desc">drag to shift</span>
+      </label>
+      <div class="param-value" id="bDisplay">0.00</div>
+      <input type="range" id="bSlider" min="-10" max="10" step="0.1" value="0">
+    </div>
+
+    <div class="info-card">
+      <h3>Live Data</h3>
+      <div class="info-row">
+        <span class="label">x-intercept</span>
+        <span class="value" id="xIntercept">0.00</span>
+      </div>
+      <div class="info-row">
+        <span class="label">y-intercept</span>
+        <span class="value" id="yIntercept">0.00</span>
+      </div>
+      <div class="info-row">
+        <span class="label">angle</span>
+        <span class="value" id="angle">45.0&deg;</span>
+      </div>
+      <div class="info-row">
+        <span class="label">quadrants</span>
+        <span class="value" id="quadrants">I III</span>
+      </div>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">Reset to y = x</button>
+  </div>
+</div>
+
+<footer>Drag the sliders &middot; Hover to inspect coordinates &middot; GitHub Pages demo</footer>
+
+<script>
+  const canvas = document.getElementById('graph');
+  const ctx = canvas.getContext('2d');
+  const kSlider = document.getElementById('kSlider');
+  const bSlider = document.getElementById('bSlider');
+  const kDisplay = document.getElementById('kDisplay');
+  const bDisplay = document.getElementById('bDisplay');
+  const eqDisplay = document.getElementById('eqDisplay');
+  const hoverCoords = document.getElementById('hoverCoords');
+  const xInterceptEl = document.getElementById('xIntercept');
+  const yInterceptEl = document.getElementById('yIntercept');
+  const angleEl = document.getElementById('angle');
+  const quadrantsEl = document.getElementById('quadrants');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const RANGE = 10;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvas._w = rect.width;
+    canvas._h = rect.height;
+    draw();
+  }
+
+  function toScreen(x, y) {
+    const w = canvas._w, h = canvas._h;
+    return [
+      w / 2 + (x / RANGE) * (w / 2),
+      h / 2 - (y / RANGE) * (h / 2)
+    ];
+  }
+
+  function toMath(sx, sy) {
+    const w = canvas._w, h = canvas._h;
+    return [
+      (sx - w / 2) / (w / 2) * RANGE,
+      (h / 2 - sy) / (h / 2) * RANGE
+    ];
+  }
+
+  function draw() {
+    const w = canvas._w, h = canvas._h;
+    const k = parseFloat(kSlider.value);
+    const b = parseFloat(bSlider.value);
+
+    ctx.clearRect(0, 0, w, h);
+
+    // grid
+    ctx.strokeStyle = '#1e2130';
+    ctx.lineWidth = 1;
+    for (let i = -RANGE; i <= RANGE; i++) {
+      if (i === 0) continue;
+      const [sx] = toScreen(i, 0);
+      const [, sy] = toScreen(0, i);
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+    }
+
+    // axes
+    const [ox, oy] = toScreen(0, 0);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(w, oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, h); ctx.stroke();
+
+    // arrows
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.moveTo(w - 2, oy); ctx.lineTo(w - 10, oy - 5); ctx.lineTo(w - 10, oy + 5); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ox, 2); ctx.lineTo(ox - 5, 10); ctx.lineTo(ox + 5, 10); ctx.fill();
+
+    // axis labels
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 13px "JetBrains Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('x', w - 16, oy + 18);
+    ctx.fillText('y', ox + 10, 16);
+
+    // ticks
+    ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    for (let i = -RANGE; i <= RANGE; i++) {
+      if (i === 0) continue;
+      const [sx] = toScreen(i, 0);
+      const [, sy] = toScreen(0, i);
+      ctx.beginPath(); ctx.moveTo(sx, oy - 3); ctx.lineTo(sx, oy + 3); ctx.stroke();
+      if (i % 2 === 0) ctx.fillText(i, sx, oy + 16);
+      ctx.beginPath(); ctx.moveTo(ox - 3, sy); ctx.lineTo(ox + 3, sy); ctx.stroke();
+      if (i % 2 === 0) {
+        ctx.textAlign = 'right';
+        ctx.fillText(i, ox - 8, sy + 4);
+        ctx.textAlign = 'center';
+      }
+    }
+    ctx.textAlign = 'right';
+    ctx.fillText('O', ox - 8, oy + 16);
+
+    // line y = kx + b
+    const xMin = -RANGE, xMax = RANGE;
+    const y1 = k * xMin + b, y2 = k * xMax + b;
+    const [sx1, sy1] = toScreen(xMin, y1);
+    const [sx2, sy2] = toScreen(xMax, y2);
+
+    // glow
+    ctx.save();
+    ctx.strokeStyle = 'rgba(80, 250, 123, 0.15)';
+    ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(80, 250, 123, 0.3)';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+    ctx.restore();
+
+    ctx.strokeStyle = '#50fa7b';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+
+    // y-intercept dot
+    const [bx, by] = toScreen(0, b);
+    ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 108, 140, 0.25)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff6c8c'; ctx.fill();
+
+    // x-intercept dot
+    if (Math.abs(k) > 0.001) {
+      const xInt = -b / k;
+      if (Math.abs(xInt) <= RANGE) {
+        const [ix, iy] = toScreen(xInt, 0);
+        ctx.beginPath(); ctx.arc(ix, iy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(108, 140, 255, 0.25)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(ix, iy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#6c8cff'; ctx.fill();
+      }
+    }
+  }
+
+  function updateInfo() {
+    const k = parseFloat(kSlider.value);
+    const b = parseFloat(bSlider.value);
+
+    kDisplay.textContent = k.toFixed(2);
+    bDisplay.textContent = b.toFixed(2);
+
+    // equation
+    let kStr, bStr;
+    const absK = Math.abs(k);
+    const absB = Math.abs(b);
+
+    if (absK < 0.001) {
+      kStr = '<span class="val-k">0</span><span class="var-x">x</span>';
+    } else if (Math.abs(absK - 1) < 0.001) {
+      kStr = k < 0
+        ? '<span class="sym">-</span><span class="var-x">x</span>'
+        : '<span class="var-x">x</span>';
+    } else {
+      kStr = '<span class="val-k">' + k.toFixed(1) + '</span><span class="var-x">x</span>';
+    }
+
+    if (absB < 0.001) {
+      bStr = '';
+    } else {
+      const sign = b > 0 ? '+' : '-';
+      bStr = ' <span class="sym">' + sign + '</span> <span class="val-b">' + absB.toFixed(1) + '</span>';
+    }
+
+    eqDisplay.innerHTML = '<span class="var-x">y</span><span class="sym"> = </span>' + kStr + bStr;
+
+    // info
+    yInterceptEl.textContent = b.toFixed(2);
+
+    if (Math.abs(k) < 0.001) {
+      xInterceptEl.textContent = 'none';
+      angleEl.textContent = '0\u00B0';
+    } else {
+      xInterceptEl.textContent = (-b / k).toFixed(2);
+      angleEl.textContent = (Math.atan(k) * 180 / Math.PI).toFixed(1) + '\u00B0';
+    }
+
+    // quadrants
+    const quads = new Set();
+    for (let x = -RANGE; x <= RANGE; x += 0.5) {
+      const y = k * x + b;
+      if (x > 0 && y > 0) quads.add('I');
+      if (x < 0 && y > 0) quads.add('II');
+      if (x < 0 && y < 0) quads.add('III');
+      if (x > 0 && y < 0) quads.add('IV');
+    }
+    const order = ['I', 'II', 'III', 'IV'];
+    quadrantsEl.textContent = order.filter(q => quads.has(q)).join(' ') || '\u2014';
+
+    draw();
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const [mx, my] = toMath(sx, sy);
+    hoverCoords.textContent = '(' + mx.toFixed(1) + ', ' + my.toFixed(1) + ')';
+    hoverCoords.style.opacity = '1';
+  });
+  canvas.addEventListener('mouseleave', () => {
+    hoverCoords.style.opacity = '0';
+  });
+
+  kSlider.addEventListener('input', updateInfo);
+  bSlider.addEventListener('input', updateInfo);
+  resetBtn.addEventListener('click', () => {
+    kSlider.value = 1;
+    bSlider.value = 0;
+    updateInfo();
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+  updateInfo();
+</script>
+
+</body>
+</html>
