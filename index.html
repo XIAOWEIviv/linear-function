@@ -3,24 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>y = kx + b</title>
+<title>Fit the Line · least squares by hand</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
-    --bg: #191317;
-    --surface: #9a639e;
-    --border: #f2f0f1;
-    --grid: #e8e6e8;
-    --axis: #e2e4e5;
-    --text: #e2dfe2;
-    --text-dim: #eceeef;
-    --accent-k: #fb4c61;
-    --accent-b: #791cfb;
-    --line-color: hsl(58, 78%, 67%);
-    --line-glow: rgba(4, 14, 6, 0.3);
+    --bg: #0e1014;
+    --surface: #161920;
+    --surface-2: #1d212a;
+    --border: #272c37;
+    --text: #e7e9ee;
+    --dim: #8a91a0;
+    --you: #f6b94c;
+    --ols: #4cc9f0;
+    --truth: #9be08a;
+    --out: #ff6b8b;
   }
 
   body {
@@ -31,504 +30,890 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem 1rem;
+    padding: 2rem 1rem 1.5rem;
   }
 
-  h1 {
-    font-size: 1.1rem;
-    font-weight: 300;
-    letter-spacing: 0.15em;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
+  header { text-align: center; margin-bottom: 1.4rem; max-width: 640px; }
+  .kicker {
+    font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim);
   }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.4rem); font-weight: 700; margin: 0.35rem 0 0.4rem; letter-spacing: -0.01em; }
+  h1 span { color: var(--you); }
+  .sub { color: var(--dim); font-size: 0.92rem; line-height: 1.5; }
 
-  .equation-display {
+  .main {
+    display: flex; gap: 1.5rem; align-items: flex-start;
+    max-width: 960px; width: 100%;
+  }
+  .stage { flex: 1; min-width: 0; max-width: 620px; }
+
+  .eq {
     font-family: 'JetBrains Mono', monospace;
-    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
     font-weight: 700;
-    margin-bottom: 1.5rem;
-    min-height: 3.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.1em;
+    margin-bottom: 0.7rem;
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; align-items: baseline;
+    min-height: 2rem;
   }
-  .equation-display .sym { color: var(--text-dim); }
-  .equation-display .val-k { color: var(--accent-k); }
-  .equation-display .val-b { color: var(--accent-b); }
-  .equation-display .var-x { color: var(--text); opacity: 0.7; }
-
-  .main-layout {
-    display: flex;
-    gap: 2rem;
-    align-items: flex-start;
-    max-width: 960px;
-    width: 100%;
-  }
+  .eq .you { color: var(--you); }
+  .eq .ols { color: var(--ols); font-size: 0.8em; }
+  .eq .tag { font-family: 'Inter', sans-serif; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-right: 0.5rem; }
 
   .canvas-wrap {
-    flex: 1;
-    aspect-ratio: 1;
-    max-width: 600px;
-    background: var(--surface);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-    position: relative;
+    position: relative; width: 100%; aspect-ratio: 1;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
   }
-
-  canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    cursor: crosshair;
-  }
-
-  .controls {
-    width: 240px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .control-group {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.2rem;
-  }
-
-  .control-group label {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 0.8rem;
-  }
-
-  .control-group .param-name {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.95rem;
-    font-weight: 700;
-  }
-
-  .control-group .param-desc {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-  }
-
-  .control-group .param-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.4rem;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 0.6rem;
-  }
-
-  .k-group .param-name,
-  .k-group .param-value { color: var(--accent-k); }
-  .b-group .param-name,
-  .b-group .param-value { color: var(--accent-b); }
-
-  input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    outline: none;
-    background: var(--border);
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: grab;
-    border: 3px solid var(--bg);
-    box-shadow: 0 0 8px rgba(0,0,0,0.4);
-  }
-  input[type="range"]::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: grab;
-    border: 3px solid var(--bg);
-    box-shadow: 0 0 8px rgba(0,0,0,0.4);
-  }
-
-  .k-group input::-webkit-slider-thumb { background: var(--accent-k); }
-  .k-group input::-moz-range-thumb { background: var(--accent-k); }
-  .b-group input::-webkit-slider-thumb { background: var(--accent-b); }
-  .b-group input::-moz-range-thumb { background: var(--accent-b); }
-
-  input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.2); }
-  input[type="range"]:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.2); }
-
-  .info-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.2rem;
-  }
-
-  .info-card h3 {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.8rem;
-  }
-
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .info-row:last-child { border-bottom: none; }
-  .info-row .label { color: var(--text-dim); }
-  .info-row .value {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
-  }
-
-  .reset-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85rem;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-  }
-  .reset-btn:hover {
-    border-color: var(--text-dim);
-    color: var(--text);
-  }
+  canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
 
   .hover-coords {
-    position: absolute;
-    bottom: 12px;
-    left: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    background: rgba(15, 17, 23, 0.85);
-    padding: 4px 10px;
-    border-radius: 6px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s;
+    position: absolute; bottom: 10px; right: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--dim);
+    background: rgba(14, 16, 20, 0.85); padding: 3px 9px; border-radius: 6px;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
   }
 
-  footer {
-    margin-top: 2rem;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    opacity: 0.5;
+  .legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin-top: 0.7rem; font-size: 0.78rem; color: var(--dim); }
+  .legend .item { display: flex; align-items: center; gap: 0.4rem; transition: opacity 0.2s; }
+  .legend .item.off { opacity: 0.3; }
+  .legend .sw { width: 18px; height: 3px; border-radius: 2px; }
+  .legend .sw.dash { background: repeating-linear-gradient(90deg, var(--truth) 0 5px, transparent 5px 9px) !important; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--out); }
+
+  .panel { width: 290px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; }
+  .card h3 {
+    font-size: 0.68rem; font-weight: 600; color: var(--dim);
+    text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 0.6rem;
+    display: flex; justify-content: space-between; align-items: center;
   }
 
-  @media (max-width: 720px) {
-    .main-layout {
-      flex-direction: column;
-      align-items: center;
-    }
-    .controls {
-      width: 100%;
-      max-width: 400px;
-    }
-    .canvas-wrap {
-      max-width: 100%;
-      width: 100%;
-    }
+  .dots { display: flex; gap: 5px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--border); display: block; }
+  .dots i.cur { background: transparent; box-shadow: inset 0 0 0 2px var(--you); }
+  .level-name { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .level-desc { font-size: 0.84rem; color: var(--dim); line-height: 1.5; }
+
+  .slider-row { margin-bottom: 0.8rem; }
+  .slider-row:last-child { margin-bottom: 0; }
+  .slider-row label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--dim); margin-bottom: 0.35rem; }
+  .slider-row label b { font-family: 'JetBrains Mono', monospace; color: var(--you); font-weight: 700; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+    border-radius: 3px; background: var(--border); outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--you); border: 3px solid var(--bg); cursor: grab;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%; background: var(--you); border: 3px solid var(--bg); cursor: grab;
+  }
+  input[type="range"]:disabled { opacity: 0.4; }
+
+  .stat { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; padding: 0.32rem 0; border-bottom: 1px solid var(--border); }
+  .stat:last-child { border-bottom: none; }
+  .stat .k { color: var(--dim); }
+  .stat .v { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .stat .v.hidden { color: var(--dim); font-weight: 400; font-size: 0.78rem; font-style: italic; }
+  .stat .v.ols { color: var(--ols); }
+
+  .seg { display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 3px; }
+  .seg button {
+    flex: 1; background: transparent; border: 0; color: var(--dim);
+    font-family: 'Inter', sans-serif; font-size: 0.78rem; padding: 0.4rem 0; border-radius: 6px; cursor: pointer;
+  }
+  .seg button.on { background: var(--border); color: var(--text); }
+  .seg.locked button { opacity: 0.35; cursor: not-allowed; }
+  .seg.locked button.on { background: transparent; }
+  .seg-note { font-size: 0.72rem; color: var(--dim); margin-top: 0.45rem; display: none; }
+  .seg-note.show { display: block; }
+
+  .btns { display: flex; gap: 0.6rem; }
+  .btn {
+    flex: 1; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+    padding: 0.7rem 0.8rem; border-radius: 9px; cursor: pointer; transition: all 0.15s;
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+  }
+  .btn:hover:not(:disabled) { border-color: var(--dim); }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn.primary { background: var(--you); color: #1a1408; border-color: var(--you); }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn small { font-weight: 400; opacity: 0.7; }
+
+  .hint-note { font-size: 0.78rem; color: var(--dim); line-height: 1.5; margin-top: -0.3rem; padding: 0 0.2rem; }
+  .hint-note b { color: var(--ols); font-weight: 600; }
+  .hint-note .neg, .btn .cost { color: var(--out); font-weight: 600; }
+  .btn .cost { font-size: 0.74rem; margin-left: 0.2rem; }
+  .btns .btn { white-space: nowrap; padding-left: 0.4rem; padding-right: 0.4rem; }
+  .hint-note.used { color: #c9ccd4; }
+  .result { display: none; }
+  .result.show { display: block; animation: pop 0.35s ease; }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .result .score-line { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.4rem; }
+  .result .score { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; }
+  .result .stars { font-size: 1.2rem; letter-spacing: 2px; color: var(--you); }
+  .result .stars .no { color: var(--border); }
+  .result .verdict { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.45rem; }
+  .result .lesson { font-size: 0.82rem; color: var(--dim); line-height: 1.55; }
+  .result .penalty { font-size: 0.75rem; color: var(--out); margin-top: 0.4rem; }
+
+  .total { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; color: var(--dim); padding: 0 0.2rem; }
+  .total b { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 1.05rem; }
+
+  .overlay {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(14, 16, 20, 0.82); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 1.5rem;
+  }
+  .overlay.show { display: flex; animation: pop 0.4s ease; }
+  .overlay { overflow-y: auto; }
+  @media (max-width: 480px) { .end .rows { display: none; } .end .big { font-size: 2.4rem; } }
+  .end { width: 100%; max-width: 340px; text-align: center; }
+  .end .kicker { margin-bottom: 0.4rem; }
+  .end .big { font-family: 'JetBrains Mono', monospace; font-size: 3rem; font-weight: 700; color: var(--you); line-height: 1.1; }
+  .end .big small { font-size: 1rem; color: var(--dim); }
+  .end .pct { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--dim); margin-top: 0.15rem; }
+  .end .rank { font-size: 1.15rem; font-weight: 700; margin: 0.8rem 0 0.3rem; }
+  .end .quip { font-size: 0.86rem; color: #c9ccd4; line-height: 1.5; margin-bottom: 1.1rem; }
+  .end .quip small { display: block; font-size: 0.72rem; color: var(--dim); margin-top: 0.2rem; }
+  .end .rows { text-align: left; margin-bottom: 1.2rem; }
+  .end .row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+  .end .row span:last-child { font-family: 'JetBrains Mono', monospace; }
+
+  .link {
+    background: none; border: 0; color: var(--ols); font: inherit; font-size: 0.85rem;
+    cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(76,201,240,0.4);
+  }
+  .link:hover { text-decoration-color: var(--ols); }
+  .sub .link { margin-top: 0.5rem; }
+  .level-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: var(--dim); margin-top: 0.6rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+  .level-meta b { color: var(--text); font-weight: 600; }
+  .level-meta { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; }
+  .level-meta span { white-space: nowrap; }
+  .eq .truth { color: var(--truth); font-size: 0.8em; }
+  .stat .v.truth { color: var(--truth); }
+  .result .formula { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: var(--dim); background: var(--surface-2); border-radius: 6px; padding: 0.45rem 0.6rem; margin-bottom: 0.6rem; line-height: 1.5; }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center;
+    background: rgba(8, 10, 13, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 1rem;
+  }
+  .modal.show { display: flex; animation: pop 0.25s ease; }
+  .modal-box {
+    position: relative; width: 100%; max-width: 580px; max-height: 86vh; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem 1.6rem;
+    line-height: 1.6; font-size: 0.88rem;
+  }
+  .modal-box h2 { font-size: 1.25rem; margin-bottom: 0.9rem; }
+  .modal-box h4 { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: var(--dim); margin: 1.2rem 0 0.45rem; }
+  .modal-box p, .modal-box li { color: #c9ccd4; }
+  .modal-box ul { padding-left: 1.1rem; }
+  .modal-box p + p { margin-top: 0.5rem; }
+  .modal-box li { margin-bottom: 0.3rem; }
+  .modal-box code, .modal-box .m { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text); }
+  .modal-box .formula-block { font-family: 'JetBrains Mono', monospace; background: var(--surface-2); border-radius: 8px; padding: 0.6rem 0.8rem; margin: 0.4rem 0; color: var(--text); font-size: 0.82rem; }
+  .modal-box table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.3rem; }
+  .modal-box th, .modal-box td { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border); }
+  .modal-box th { color: var(--dim); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .modal-box td.n { font-family: 'JetBrains Mono', monospace; }
+  .modal-x {
+    position: absolute; top: 0.7rem; right: 0.8rem; width: 32px; height: 32px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border); color: var(--dim); font-size: 1.2rem; cursor: pointer; line-height: 1;
+  }
+  .modal-x:hover { color: var(--text); border-color: var(--dim); }
+  .c-you { color: var(--you); } .c-ols { color: var(--ols); } .c-truth { color: var(--truth); } .c-out { color: var(--out); }
+
+  footer { margin-top: 2rem; font-size: 0.75rem; color: var(--dim); text-align: center; line-height: 1.7; }
+  footer a { color: var(--dim); }
+  kbd { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+
+  @media (max-width: 760px) {
+    .main { flex-direction: column; align-items: center; }
+    .stage { max-width: 100%; width: 100%; }
+    .panel { width: 100%; max-width: 620px; }
   }
 </style>
 </head>
 <body>
 
-<h1>Interactive Linear Function</h1>
-<div class="equation-display" id="eqDisplay"></div>
+<header>
+  <div class="kicker">Least squares, by hand</div>
+  <h1>Fit the <span>Line</span></h1>
+  <p class="sub">Five datasets. Drag the line to fit each one, then see how close you got to ordinary least squares (OLS), the best possible fit.<br><button class="link" id="rulesBtn">How it works &amp; scoring rules</button></p>
+</header>
 
-<div class="main-layout">
-  <div class="canvas-wrap">
-    <canvas id="graph"></canvas>
-    <div class="hover-coords" id="hoverCoords"></div>
+<div class="main">
+  <div class="stage">
+    <div class="eq" id="eq"></div>
+    <div class="canvas-wrap">
+      <canvas id="c"></canvas>
+      <div class="hover-coords" id="hover"></div>
+      <div class="overlay" id="overlay">
+        <div class="end">
+          <div class="kicker">Final score</div>
+          <div class="big" id="endTotal">0<small> / 500</small></div>
+          <div class="pct" id="endPct"></div>
+          <div class="rank" id="endRank"></div>
+          <div class="quip" id="endQuip"></div>
+          <div class="rows" id="endRows"></div>
+          <button class="btn primary" id="againBtn" style="width:100%">Play again with new data</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="item"><span class="sw" style="background:var(--you)"></span>Your fit</div>
+      <div class="item off" id="lgOls"><span class="sw" style="background:var(--ols)"></span>OLS best fit</div>
+      <div class="item off" id="lgTrue"><span class="sw dash"></span>True trend (noise-free)</div>
+      <div class="item off" id="lgOut"><span class="dot"></span>Outlier</div>
+    </div>
   </div>
 
-  <div class="controls">
-    <div class="control-group k-group">
-      <label>
-        <span class="param-name">k (slope)</span>
-        <span class="param-desc">drag to tilt</span>
-      </label>
-      <div class="param-value" id="kDisplay">1.00</div>
-      <input type="range" id="kSlider" min="-10" max="10" step="0.1" value="1">
+  <div class="panel">
+    <div class="card">
+      <h3><span id="lvlLabel">Level 1 / 5</span><span class="dots" id="dots"></span></h3>
+      <div class="level-name" id="lvlName"></div>
+      <div class="level-desc" id="lvlDesc"></div>
+      <div class="level-meta" id="lvlMeta"></div>
     </div>
 
-    <div class="control-group b-group">
-      <label>
-        <span class="param-name">b (intercept)</span>
-        <span class="param-desc">drag to shift</span>
-      </label>
-      <div class="param-value" id="bDisplay">0.00</div>
-      <input type="range" id="bSlider" min="-10" max="10" step="0.1" value="0">
-    </div>
-
-    <div class="info-card">
-      <h3>Live Data</h3>
-      <div class="info-row">
-        <span class="label">x-intercept</span>
-        <span class="value" id="xIntercept">0.00</span>
+    <div class="card">
+      <div class="slider-row">
+        <label>slope k <b id="kVal">0.00</b></label>
+        <input type="range" id="kSlider" min="-3" max="3" step="0.01" value="0">
       </div>
-      <div class="info-row">
-        <span class="label">y-intercept</span>
-        <span class="value" id="yIntercept">0.00</span>
-      </div>
-      <div class="info-row">
-        <span class="label">angle</span>
-        <span class="value" id="angle">45.0&deg;</span>
-      </div>
-      <div class="info-row">
-        <span class="label">quadrants</span>
-        <span class="value" id="quadrants">I III</span>
+      <div class="slider-row">
+        <label>intercept b <b id="bVal">0.00</b></label>
+        <input type="range" id="bSlider" min="-9" max="9" step="0.01" value="0">
       </div>
     </div>
 
-    <button class="reset-btn" id="resetBtn">Reset to y = x</button>
+    <div class="card">
+      <div class="stat"><span class="k">Your MSE</span><span class="v" id="mseYou">–</span></div>
+      <div class="stat"><span class="k">Your R²</span><span class="v" id="r2You">–</span></div>
+      <div class="stat"><span class="k">Best MSE (OLS)</span><span class="v ols" id="mseBest">?</span></div>
+      <div class="stat"><span class="k">True trend MSE</span><span class="v truth" id="mseTrue">?</span></div>
+      <div style="margin-top:0.75rem">
+        <div class="seg" id="seg">
+          <button data-m="off">No residuals</button>
+          <button data-m="lines" class="on">Lines</button>
+          <button data-m="squares">Squares</button>
+        </div>
+        <div class="seg-note" id="segNote">🔒 Meter off: residuals unlock after you lock in.</div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn" id="hintBtn">Show hint <span class="cost">−15 pts</span></button>
+      <button class="btn primary" id="goBtn">Lock in fit</button>
+    </div>
+
+    <div class="hint-note" id="hintNote"></div>
+
+    <div class="card result" id="result">
+      <div class="score-line">
+        <span class="score" id="scoreVal">0</span>
+        <span class="stars" id="stars"></span>
+      </div>
+      <div class="formula" id="formula"></div>
+      <div class="verdict" id="verdict"></div>
+      <div class="lesson" id="lesson"></div>
+    </div>
+
+    <div class="total"><span>Total</span><b id="total">0 / 500</b></div>
   </div>
 </div>
 
-<footer>Drag the sliders &middot; Hover to inspect coordinates &middot; GitHub Pages demo</footer>
+<footer>
+  Drag the round handles to tilt the line · grab the line itself to slide it · <kbd>Enter</kbd> to lock in<br>
+  Made by <a href="https://github.com/xiaoweiviv">xiaoweiviv</a>
+</footer>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box">
+    <button class="modal-x" id="modalX" aria-label="Close">×</button>
+    <h2 id="modalTitle">How it works</h2>
+
+    <h4>The goal</h4>
+    <p>Each level shows a scatter of points. Move the <span class="c-you">yellow line</span> so it fits them as well as you can, then lock it in. You can drag the round handles to tilt it, grab the line to slide it, or use the sliders.</p>
+
+    <h4>How the data is made</h4>
+    <p>Every level secretly picks a slope <span class="m">k</span> and an intercept <span class="m">b</span>. Each point is then generated as</p>
+    <div class="formula-block">y = k·x + b + ε,&nbsp;&nbsp; ε ~ Normal(0, σ²)</div>
+    <p>where <span class="m">σ</span> is the level's noise level: the typical distance of a point from the true line. About 68% of points land within ±σ of it, and about 95% within ±2σ.</p>
+
+    <h4>The three lines</h4>
+    <ul>
+      <li><span class="c-you">Your fit</span>: the line you drew.</li>
+      <li><span class="c-truth">True trend</span>: <span class="m">y = k·x + b</span> with the noise removed. It is the rule the data came from. In real analysis you never get to see it; here you can, because the game made the data.</li>
+      <li><span class="c-ols">OLS best fit</span>: the line with the smallest possible mean squared error on <em>these particular points</em>. It is the best anyone can do using only the data on screen.</li>
+    </ul>
+    <p>OLS and the true trend differ because the noise is random. One sample might happen to sit a little high on the right, and OLS follows it. As a result, the true trend's MSE on the sample is always <em>higher</em> than OLS's MSE (it lands near σ²). With more points and less noise, the two lines converge.</p>
+
+    <h4>Scoring</h4>
+    <div class="formula-block">MSE = average of (yᵢ − ŷᵢ)²<br>score = round(100 × MSE<sub>OLS</sub> ÷ MSE<sub>you</sub>)</div>
+    <ul>
+      <li>Matching OLS exactly gives 100. Twice its error gives 50.</li>
+      <li>You are scored against <span class="c-ols">OLS</span>, not the true trend, because you and OLS see the same data.</li>
+      <li>Scores are clamped to 0–100 per level, so the total is out of 500.</li>
+      <li>Stars: ★★★ ≥ 95, ★★ ≥ 80, ★ ≥ 60.</li>
+      <li><b>Meter</b> means the live MSE / R² readout <em>and</em> the residual Lines / Squares view. On meter-off levels both stay hidden until you lock in; after that you can turn them on to review your fit.</li>
+      <li>R² = 1 − (your squared error ÷ squared error of a flat line at ȳ). It can go negative if your line is worse than that flat line.</li>
+    </ul>
+
+    <h4>Hint</h4>
+    <p>Each level has one optional hint. It marks the <span class="c-ols">average point (x̄, ȳ)</span> of the data with a cyan ⊕. The OLS line always passes through this point, so once you know it, you only need to get the slope right.</p>
+    <p>Using the hint takes <b>15 points</b> off that level's score, after the score is calculated. For example, a raw 92 becomes 77. The result card shows the deduction.</p>
+
+    <h4>Levels</h4>
+    <table id="lvlTable"></table>
+    <p style="margin-top:0.6rem">Outliers sit 5–7.5 units off the true line, both on the same side, so their pull on OLS is easy to see. Slope and intercept are re-drawn every time you play.</p>
+  </div>
+</div>
 
 <script>
-  const canvas = document.getElementById('graph');
-  const ctx = canvas.getContext('2d');
-  const kSlider = document.getElementById('kSlider');
-  const bSlider = document.getElementById('bSlider');
-  const kDisplay = document.getElementById('kDisplay');
-  const bDisplay = document.getElementById('bDisplay');
-  const eqDisplay = document.getElementById('eqDisplay');
-  const hoverCoords = document.getElementById('hoverCoords');
-  const xInterceptEl = document.getElementById('xIntercept');
-  const yInterceptEl = document.getElementById('yIntercept');
-  const angleEl = document.getElementById('angle');
-  const quadrantsEl = document.getElementById('quadrants');
-  const resetBtn = document.getElementById('resetBtn');
-
+(() => {
   const RANGE = 10;
+  const HANDLE_X = 6;
+  const K_MIN = -3, K_MAX = 3, B_MIN = -9, B_MAX = 9;
+
+  const LEVELS = [
+    { name: 'Warm-up', n: 12, noise: 0.7, slope: [0.4, 1.1], sign: 1, outliers: 0, meter: true,
+      desc: 'A clean upward trend. Drag the round handles until the line runs through the middle of the cloud. The MSE meter shows how you are doing.',
+      lesson: 'The OLS line always passes through the centroid (x̄, ȳ), the average point. That is what the Hint shows you.' },
+    { name: 'Downhill', n: 16, noise: 1.3, slope: [0.4, 1.2], sign: -1, outliers: 0, meter: true,
+      desc: 'Negative slope and more scatter. Last level with the meter on, so try the Squares view and watch them shrink.',
+      lesson: 'MSE is the average of those squares. "Least squares" literally means making their total area as small as possible.' },
+    { name: 'Cloudy', n: 30, noise: 2.4, slope: [0.2, 0.9], sign: 0, outliers: 0, meter: false,
+      desc: 'Heavy noise, and from here on the meter is off: no MSE readout and no residual view until you lock in. Trust the overall shape, not individual points.',
+      lesson: 'With lots of noise, R² is low even for the best line. A low R² does not mean the fit is wrong; the data is just noisy. Compare the cyan line with the dashed true trend.' },
+    { name: 'Sparse', n: 6, noise: 1.6, slope: [0.3, 1.2], sign: 0, outliers: 0, meter: false,
+      desc: 'Only six points. Each one pulls hard on the fit.',
+      lesson: 'With six points, even the best fit can land far from the true trend (dashed). Small samples give shaky estimates: the standard error of the slope shrinks roughly like 1/√n.' },
+    { name: 'Outliers', n: 14, noise: 0.8, slope: [0.3, 1.0], sign: 0, outliers: 2, meter: false,
+      desc: 'Two points do not belong here. But you are scored against OLS, and OLS cannot tell which ones they are.',
+      lesson: 'See how OLS got pulled toward the pink outliers? Squaring makes big misses very expensive, so a few bad points can drag the whole line. Robust methods like Huber loss or Theil–Sen are built to resist this.' },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const canvas = $('c'), ctx = canvas.getContext('2d');
+  const kSlider = $('kSlider'), bSlider = $('bSlider');
+
+  const S = {
+    lvl: 0, data: null, best: null,
+    k: 0, b: 0,
+    phase: 'play',            // play | revealed | done
+    hint: false, scores: [],
+    resid: 'lines',
+    animT: 1, hover: null, drag: null,
+  };
+
+  // ---------- math ----------
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const gauss = () => {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = t => 1 - Math.pow(1 - t, 3);
+
+  function generate(cfg) {
+    const sign = cfg.sign || (Math.random() < 0.5 ? -1 : 1);
+    const k = sign * rand(cfg.slope[0], cfg.slope[1]);
+    const bMax = Math.max(0.5, 5.5 - Math.abs(k) * 4.5);
+    const b = rand(-bMax, bMax);
+    const xr = Math.min(8.5, (8.5 - Math.abs(b)) / Math.abs(k));
+    const pts = [];
+    let guard = 0;
+    while (pts.length < cfg.n && guard++ < 5000) {
+      const x = rand(-xr, xr);
+      const y = k * x + b + gauss() * cfg.noise;
+      if (Math.abs(y) <= 9.2) pts.push({ x, y, out: false });
+    }
+    // outliers: same side, same direction, so the pull on OLS is visible
+    if (cfg.outliers) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      let dir = Math.random() < 0.5 ? -1 : 1;
+      for (let i = 0; i < cfg.outliers; i++) {
+        for (let t = 0; t < 200; t++) {
+          const x = side * rand(0.45 * xr, 0.95 * xr);
+          const y = k * x + b + dir * rand(5, 7.5);
+          if (Math.abs(y) <= 9.2) { pts.push({ x, y, out: true }); break; }
+          if (t % 20 === 19) dir = -dir;
+        }
+      }
+    }
+    return { k, b, pts };
+  }
+
+  function ols(pts) {
+    const n = pts.length;
+    const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+    const my = pts.reduce((s, p) => s + p.y, 0) / n;
+    let sxy = 0, sxx = 0;
+    for (const p of pts) { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; }
+    const k = sxy / sxx;
+    return { k, b: my - k * mx, mx, my };
+  }
+
+  function stats(pts, k, b) {
+    const n = pts.length;
+    const my = pts.reduce((s, p) => s + p.y, 0) / n;
+    let ssr = 0, sst = 0;
+    for (const p of pts) { ssr += (p.y - (k * p.x + b)) ** 2; sst += (p.y - my) ** 2; }
+    return { mse: ssr / n, r2: 1 - ssr / sst };
+  }
+
+  // ---------- canvas geometry ----------
+  let W = 0, H = 0;
+  const sx = x => W / 2 + (x / RANGE) * (W / 2);
+  const sy = y => H / 2 - (y / RANGE) * (H / 2);
+  const mxOf = px => ((px - W / 2) / (W / 2)) * RANGE;
+  const myOf = py => ((H / 2 - py) / (H / 2)) * RANGE;
+  const ppu = () => W / 2 / RANGE;
 
   function resize() {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    canvas._w = rect.width;
-    canvas._h = rect.height;
+    const r = canvas.parentElement.getBoundingClientRect();
+    const d = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * d);
+    canvas.height = Math.round(r.height * d);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    W = r.width; H = r.height;
     draw();
   }
 
-  function toScreen(x, y) {
-    const w = canvas._w, h = canvas._h;
-    return [
-      w / 2 + (x / RANGE) * (w / 2),
-      h / 2 - (y / RANGE) * (h / 2)
-    ];
+  // handle position: x = ±6, pulled inward if the line would leave the view
+  function handlePos(side) {
+    let x = side * HANDLE_X;
+    let y = S.k * x + S.b;
+    if (Math.abs(y) > 9 && Math.abs(S.k) > 1e-6) {
+      y = Math.sign(y) * 9;
+      x = (y - S.b) / S.k;
+    }
+    return { x, y };
   }
 
-  function toMath(sx, sy) {
-    const w = canvas._w, h = canvas._h;
-    return [
-      (sx - w / 2) / (w / 2) * RANGE,
-      (h / 2 - sy) / (h / 2) * RANGE
-    ];
+  // residual view counts as part of the meter: hidden on meter-off levels until reveal
+  const aidsOn = () => LEVELS[S.lvl].meter || S.phase !== 'play';
+  const residMode = () => (aidsOn() ? S.resid : 'off');
+
+  // ---------- drawing ----------
+  function drawGrid() {
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1d212a';
+    for (let i = -RANGE; i <= RANGE; i++) {
+      if (i === 0) continue;
+      ctx.beginPath(); ctx.moveTo(sx(i), 0); ctx.lineTo(sx(i), H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, sy(i)); ctx.lineTo(W, sy(i)); ctx.stroke();
+    }
+    const ox = sx(0), oy = sy(0);
+    ctx.strokeStyle = '#3f4554';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(W, oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, H); ctx.stroke();
+
+    ctx.fillStyle = '#5c6373';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    for (let i = -RANGE + 2; i < RANGE; i += 2) {
+      if (i === 0) continue;
+      ctx.textAlign = 'center';
+      ctx.fillText(i, sx(i), oy + 14);
+      ctx.textAlign = 'right';
+      ctx.fillText(i, ox - 6, sy(i) + 3);
+    }
+    ctx.textAlign = 'left';
+    ctx.font = '600 12px "JetBrains Mono", monospace';
+    ctx.fillText('x', W - 14, oy - 7);
+    ctx.fillText('y', ox + 7, 14);
+  }
+
+  function line(k, b, rgb, alpha = 1, width = 2.5, dash = null) {
+    const x1 = -RANGE - 1, x2 = RANGE + 1;
+    ctx.save();
+    if (dash) ctx.setLineDash(dash);
+    if (!dash) {
+      ctx.strokeStyle = `rgba(${rgb}, ${0.14 * alpha})`;
+      ctx.lineWidth = width + 7;
+      ctx.beginPath(); ctx.moveTo(sx(x1), sy(k * x1 + b)); ctx.lineTo(sx(x2), sy(k * x2 + b)); ctx.stroke();
+    }
+    ctx.strokeStyle = `rgba(${rgb}, ${alpha})`;
+    ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(sx(x1), sy(k * x1 + b)); ctx.lineTo(sx(x2), sy(k * x2 + b)); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawResiduals(k, b, alpha) {
+    for (const p of S.data.pts) {
+      const yh = k * p.x + b;
+      const r = p.y - yh;
+      if (residMode() === 'squares') {
+        const side = Math.abs(r);
+        const dir = p.x > 0 ? -1 : 1;
+        const x0 = sx(p.x), x1 = sx(p.x + dir * side);
+        const y0 = sy(yh), y1 = sy(p.y);
+        ctx.fillStyle = `rgba(246, 185, 76, ${0.09 * alpha})`;
+        ctx.strokeStyle = `rgba(246, 185, 76, ${0.35 * alpha})`;
+        ctx.lineWidth = 1;
+        ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+        ctx.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+      } else {
+        ctx.strokeStyle = `rgba(246, 185, 76, ${0.45 * alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(sx(p.x), sy(p.y)); ctx.lineTo(sx(p.x), sy(yh)); ctx.stroke();
+      }
+    }
+  }
+
+  function drawCentroid() {
+    const { mx, my } = S.best;
+    const x = sx(mx), y = sy(my);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(76, 201, 240, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x - 14, y); ctx.lineTo(x + 14, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.lineTo(x, y + 14); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#4cc9f0';
+    const l1 = 'average point', l2 = 'best fit passes here';
+    ctx.font = '600 11px "Inter", sans-serif';
+    const tw = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width) + 4;
+    const right = x + 12 + tw < W - 6;
+    ctx.textAlign = right ? 'left' : 'right';
+    const tx = right ? x + 12 : x - 12;
+    const ty = y < 40 ? y + 26 : y - 22;
+    // backing plate so the label stays readable over points
+    ctx.fillStyle = 'rgba(14, 16, 20, 0.88)';
+    const bx = right ? tx - 6 : tx - tw - 2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, ty - 13, tw + 8, 32, 6); else ctx.rect(bx, ty - 13, tw + 8, 32);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(76, 201, 240, 0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fillText(l1, tx, ty);
+    ctx.font = '400 11px "Inter", sans-serif';
+    ctx.globalAlpha = 0.8;
+    ctx.fillText(l2, tx, ty + 14);
+    ctx.restore();
   }
 
   function draw() {
-    const w = canvas._w, h = canvas._h;
-    const k = parseFloat(kSlider.value);
-    const b = parseFloat(bSlider.value);
+    if (!W || !S.data) return;
+    ctx.clearRect(0, 0, W, H);
+    drawGrid();
 
-    ctx.clearRect(0, 0, w, h);
+    const revealed = S.phase !== 'play';
+    if (residMode() !== 'off') drawResiduals(S.k, S.b, revealed ? 0.5 : 1);
 
-    // grid
-    ctx.strokeStyle = '#1e2130';
-    ctx.lineWidth = 1;
-    for (let i = -RANGE; i <= RANGE; i++) {
-      if (i === 0) continue;
-      const [sx] = toScreen(i, 0);
-      const [, sy] = toScreen(0, i);
-      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+    if (revealed) line(S.data.k, S.data.b, '155, 224, 138', 0.75, 1.6, [7, 6]);
+
+    line(S.k, S.b, '246, 185, 76', revealed ? 0.6 : 1);
+
+    if (revealed) {
+      const t = ease(S.animT);
+      line(lerp(S.k, S.best.k, t), lerp(S.b, S.best.b, t), '76, 201, 240', 1);
     }
 
-    // axes
-    const [ox, oy] = toScreen(0, 0);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(w, oy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, h); ctx.stroke();
+    if (S.hint) drawCentroid();
 
-    // arrows
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.moveTo(w - 2, oy); ctx.lineTo(w - 10, oy - 5); ctx.lineTo(w - 10, oy + 5); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(ox, 2); ctx.lineTo(ox - 5, 10); ctx.lineTo(ox + 5, 10); ctx.fill();
-
-    // axis labels
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 13px "JetBrains Mono", monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('x', w - 16, oy + 18);
-    ctx.fillText('y', ox + 10, 16);
-
-    // ticks
-    ctx.font = '11px "JetBrains Mono", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    for (let i = -RANGE; i <= RANGE; i++) {
-      if (i === 0) continue;
-      const [sx] = toScreen(i, 0);
-      const [, sy] = toScreen(0, i);
-      ctx.beginPath(); ctx.moveTo(sx, oy - 3); ctx.lineTo(sx, oy + 3); ctx.stroke();
-      if (i % 2 === 0) ctx.fillText(i, sx, oy + 16);
-      ctx.beginPath(); ctx.moveTo(ox - 3, sy); ctx.lineTo(ox + 3, sy); ctx.stroke();
-      if (i % 2 === 0) {
-        ctx.textAlign = 'right';
-        ctx.fillText(i, ox - 8, sy + 4);
-        ctx.textAlign = 'center';
+    for (const p of S.data.pts) {
+      const x = sx(p.x), y = sy(p.y);
+      if (revealed && p.out) {
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff6b8b'; ctx.lineWidth = 2; ctx.stroke();
       }
+      ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#e7e9ee'; ctx.fill();
     }
-    ctx.textAlign = 'right';
-    ctx.fillText('O', ox - 8, oy + 16);
 
-    // line y = kx + b
-    const xMin = -RANGE, xMax = RANGE;
-    const y1 = k * xMin + b, y2 = k * xMax + b;
-    const [sx1, sy1] = toScreen(xMin, y1);
-    const [sx2, sy2] = toScreen(xMax, y2);
-
-    // glow
-    ctx.save();
-    ctx.strokeStyle = 'rgba(80, 250, 123, 0.15)';
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(80, 250, 123, 0.3)';
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
-    ctx.restore();
-
-    ctx.strokeStyle = '#50fa7b';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
-
-    // y-intercept dot
-    const [bx, by] = toScreen(0, b);
-    ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 108, 140, 0.25)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ff6c8c'; ctx.fill();
-
-    // x-intercept dot
-    if (Math.abs(k) > 0.001) {
-      const xInt = -b / k;
-      if (Math.abs(xInt) <= RANGE) {
-        const [ix, iy] = toScreen(xInt, 0);
-        ctx.beginPath(); ctx.arc(ix, iy, 6, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(108, 140, 255, 0.25)'; ctx.fill();
-        ctx.beginPath(); ctx.arc(ix, iy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#6c8cff'; ctx.fill();
+    if (!revealed) {
+      for (const side of [-1, 1]) {
+        const h = handlePos(side);
+        const active = S.hover === side || (S.drag && S.drag.side === side);
+        ctx.beginPath(); ctx.arc(sx(h.x), sy(h.y), active ? 14 : 11, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(246, 185, 76, 0.18)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(sx(h.x), sy(h.y), active ? 8 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#f6b94c'; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = '#161920'; ctx.stroke();
       }
     }
   }
 
-  function updateInfo() {
-    const k = parseFloat(kSlider.value);
-    const b = parseFloat(bSlider.value);
+  // ---------- UI ----------
+  const fmt = (v, d = 2) => (Math.abs(v) < 0.005 ? 0 : v).toFixed(d);
+  function eqText(k, b) {
+    const bs = Math.abs(b) < 0.005 ? '' : (b > 0 ? ' + ' : ' − ') + Math.abs(b).toFixed(2);
+    return `y = ${fmt(k).replace('-', '−')}x${bs}`;
+  }
 
-    kDisplay.textContent = k.toFixed(2);
-    bDisplay.textContent = b.toFixed(2);
+  function starsHTML(n) {
+    return [0, 1, 2].map(i => i < n ? '★' : '<span class="no">★</span>').join('');
+  }
+  const starCount = s => (s >= 95 ? 3 : s >= 80 ? 2 : s >= 60 ? 1 : 0);
 
-    // equation
-    let kStr, bStr;
-    const absK = Math.abs(k);
-    const absB = Math.abs(b);
+  function updateUI() {
+    const cfg = LEVELS[S.lvl];
+    const revealed = S.phase !== 'play';
+    const st = stats(S.data.pts, S.k, S.b);
+    const best = stats(S.data.pts, S.best.k, S.best.b);
 
-    if (absK < 0.001) {
-      kStr = '<span class="val-k">0</span><span class="var-x">x</span>';
-    } else if (Math.abs(absK - 1) < 0.001) {
-      kStr = k < 0
-        ? '<span class="sym">-</span><span class="var-x">x</span>'
-        : '<span class="var-x">x</span>';
+    $('lvlLabel').textContent = `Level ${S.lvl + 1} / ${LEVELS.length}`;
+    $('lvlName').textContent = cfg.name;
+    $('lvlDesc').textContent = cfg.desc;
+    $('lvlMeta').innerHTML = [
+      `<span><b>${cfg.n}</b> points${cfg.outliers ? ` + <b>${cfg.outliers}</b> outliers` : ''}</span>`,
+      `<span>noise σ = <b>${cfg.noise}</b></span>`,
+      `<span>meter ${cfg.meter ? '<b>on</b>' : 'off'}</span>`,
+    ].join('');
+    $('dots').innerHTML = LEVELS.map((_, i) => {
+      if (i < S.scores.length) {
+        const c = ['#3a3f4b', '#8a6a2f', '#c48f3a', '#f6b94c'][starCount(S.scores[i])];
+        return `<i style="background:${c}"></i>`;
+      }
+      return `<i class="${i === S.lvl ? 'cur' : ''}"></i>`;
+    }).join('');
+
+    $('eq').innerHTML =
+      `<span class="you"><span class="tag">you</span>${eqText(S.k, S.b)}</span>` +
+      (revealed ? `<span class="ols"><span class="tag">ols</span>${eqText(S.best.k, S.best.b)}</span>` +
+                  `<span class="truth"><span class="tag">true</span>${eqText(S.data.k, S.data.b)}</span>` : '');
+
+    $('kVal').textContent = fmt(S.k);
+    $('bVal').textContent = fmt(S.b);
+    kSlider.value = S.k; bSlider.value = S.b;
+    kSlider.disabled = bSlider.disabled = revealed;
+
+    const show = cfg.meter || revealed;
+    const mseEl = $('mseYou'), r2El = $('r2You');
+    mseEl.textContent = show ? st.mse.toFixed(3) : 'hidden';
+    r2El.textContent = show ? (Math.abs(st.r2) < 0.0005 ? 0 : st.r2).toFixed(3) : 'hidden';
+    mseEl.className = r2El.className = 'v' + (show ? '' : ' hidden');
+    $('mseBest').textContent = revealed ? best.mse.toFixed(3) : '?';
+    $('mseTrue').textContent = revealed ? stats(S.data.pts, S.data.k, S.data.b).mse.toFixed(3) : '?';
+
+    const locked = !aidsOn();
+    $('seg').classList.toggle('locked', locked);
+    [...$('seg').children].forEach(b => { b.disabled = locked; });
+    $('segNote').classList.toggle('show', locked);
+
+    $('hintBtn').disabled = S.hint || revealed;
+    const hn = $('hintNote');
+    hn.classList.toggle('used', S.hint);
+    hn.innerHTML = S.hint
+      ? '<span class="neg">Hint used: −15 points.</span> The <b>cyan ⊕</b> is the average of all points (x̄, ȳ). The best-fit line always passes through it, so pin your line there and just adjust the tilt.'
+      : (revealed ? '' : 'Reveals one point the best-fit line is guaranteed to pass through.');
+    const go = $('goBtn');
+    go.textContent = !revealed ? 'Lock in fit' : (S.lvl < LEVELS.length - 1 ? 'Next level →' : 'See final score');
+
+    $('lgOls').classList.toggle('off', !revealed);
+    $('lgTrue').classList.toggle('off', !revealed);
+    $('lgOut').classList.toggle('off', !(revealed && cfg.outliers));
+
+    const res = $('result');
+    if (revealed) {
+      const sc = S.scores[S.lvl];
+      $('scoreVal').textContent = sc;
+      $('stars').innerHTML = starsHTML(starCount(sc));
+      const raw = 100 * best.mse / st.mse;
+      $('formula').innerHTML = `100 × ${best.mse.toFixed(3)} ÷ ${st.mse.toFixed(3)} = ${raw.toFixed(1)}` +
+        (S.hint ? `<br><span style="color:var(--out)">− 15 (hint)</span> → ${sc}` : ` → ${sc}`);
+      $('verdict').textContent = verdict(sc);
+      $('lesson').textContent = cfg.lesson;
+      res.classList.add('show');
     } else {
-      kStr = '<span class="val-k">' + k.toFixed(1) + '</span><span class="var-x">x</span>';
+      res.classList.remove('show');
     }
 
-    if (absB < 0.001) {
-      bStr = '';
+    const total = S.scores.reduce((a, b) => a + b, 0);
+    $('total').textContent = `${total} / ${LEVELS.length * 100}`;
+  }
+
+  function verdict(s) {
+    if (s >= 95) return 'Basically OLS. Your eyes do least squares.';
+    if (s >= 80) return 'Close: a small tilt or shift away from optimal.';
+    if (s >= 60) return 'Right direction, but the squared errors add up.';
+    return 'The squares punished that one. See where the cyan line went.';
+  }
+
+  // [min total out of 500, title, quip]
+  const RANKS = [
+    [490, 'Suspiciously perfect', 'Be honest: are you running <code>np.polyfit()</code> in your head?'],
+    [450, 'Human regression engine', 'Eagle-eyed and factory-calibrated. Frankly, more AI than the AI.'],
+    [400, 'Top-tier eyeballing', 'You out-fit 87% of humans.<small>*Sample size: 1. Confidence interval: vibes.</small>'],
+    [350, 'Very solid', 'Small, well-behaved residuals. Somewhere, a stats professor nods approvingly.'],
+    [300, 'Passing grade', 'You and the data are on speaking terms. Not friends yet, but it\u2019s a start.'],
+    [200, 'Respect the math', 'Statistics 1, intuition 0. Now you know why we let the computer do this.'],
+    [0,   'The residuals won', 'The squared errors send their regards. Fancy a rematch?'],
+  ];
+  const rankFor = t => RANKS.find(r => t >= r[0]);
+
+  // ---------- flow ----------
+  function startLevel(i) {
+    S.lvl = i;
+    S.data = generate(LEVELS[i]);
+    S.best = ols(S.data.pts);
+    S.k = 0; S.b = 0;
+    S.phase = 'play'; S.hint = false; S.animT = 1;
+    $('overlay').classList.remove('show');
+    $('goBtn').disabled = false;
+    updateUI(); draw();
+  }
+
+  function lockIn() {
+    const user = stats(S.data.pts, S.k, S.b).mse;
+    const best = stats(S.data.pts, S.best.k, S.best.b).mse;
+    let sc = Math.round(100 * best / user);
+    if (S.hint) sc -= 15;
+    S.scores[S.lvl] = clamp(sc, 0, 100);
+    S.phase = 'revealed';
+    S.animT = 0;
+    const t0 = performance.now();
+    const tick = now => {
+      S.animT = Math.min(1, (now - t0) / 750);
+      draw();
+      if (S.animT < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    updateUI();
+  }
+
+  function next() {
+    if (S.lvl < LEVELS.length - 1) { startLevel(S.lvl + 1); return; }
+    S.phase = 'done';
+    const total = S.scores.reduce((a, b) => a + b, 0);
+    $('endTotal').innerHTML = `${total}<small> / ${LEVELS.length * 100}</small>`;
+    const [, title, quip] = rankFor(total);
+    $('endPct').textContent = `= ${Math.round(total / LEVELS.length)} / 100`;
+    $('endRank').textContent = title;
+    $('endQuip').innerHTML = quip;
+    $('endRows').innerHTML = LEVELS.map((L, i) =>
+      `<div class="row"><span>${i + 1}. ${L.name}</span><span>${S.scores[i]} <span style="color:var(--you)">${'★'.repeat(starCount(S.scores[i]))}</span></span></div>`
+    ).join('');
+    $('overlay').classList.add('show');
+    $('goBtn').disabled = true;
+  }
+
+  function setLine(k, b) {
+    S.k = clamp(k, K_MIN, K_MAX);
+    S.b = clamp(b, B_MIN, B_MAX);
+    updateUI(); draw();
+  }
+
+  // ---------- input ----------
+  function localPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return { px: e.clientX - r.left, py: e.clientY - r.top };
+  }
+
+  function hitTest(px, py) {
+    for (const side of [-1, 1]) {
+      const h = handlePos(side);
+      if (Math.hypot(sx(h.x) - px, sy(h.y) - py) < 18) return side;
+    }
+    const mx = mxOf(px), my = myOf(py);
+    const d = Math.abs(S.k * mx + S.b - my) / Math.sqrt(1 + S.k * S.k) * ppu();
+    if (d < 12) return 'line';
+    return null;
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (S.phase !== 'play') return;
+    const { px, py } = localPos(e);
+    const hit = hitTest(px, py);
+    if (hit === null) return;
+    canvas.setPointerCapture(e.pointerId);
+    if (hit === 'line') {
+      S.drag = { side: 'line', my0: myOf(py), b0: S.b };
     } else {
-      const sign = b > 0 ? '+' : '-';
-      bStr = ' <span class="sym">' + sign + '</span> <span class="val-b">' + absB.toFixed(1) + '</span>';
+      S.drag = { side: hit, other: handlePos(-hit) };
     }
-
-    eqDisplay.innerHTML = '<span class="var-x">y</span><span class="sym"> = </span>' + kStr + bStr;
-
-    // info
-    yInterceptEl.textContent = b.toFixed(2);
-
-    if (Math.abs(k) < 0.001) {
-      xInterceptEl.textContent = 'none';
-      angleEl.textContent = '0\u00B0';
-    } else {
-      xInterceptEl.textContent = (-b / k).toFixed(2);
-      angleEl.textContent = (Math.atan(k) * 180 / Math.PI).toFixed(1) + '\u00B0';
-    }
-
-    // quadrants
-    const quads = new Set();
-    for (let x = -RANGE; x <= RANGE; x += 0.5) {
-      const y = k * x + b;
-      if (x > 0 && y > 0) quads.add('I');
-      if (x < 0 && y > 0) quads.add('II');
-      if (x < 0 && y < 0) quads.add('III');
-      if (x > 0 && y < 0) quads.add('IV');
-    }
-    const order = ['I', 'II', 'III', 'IV'];
-    quadrantsEl.textContent = order.filter(q => quads.has(q)).join(' ') || '\u2014';
-
+    canvas.style.cursor = 'grabbing';
     draw();
-  }
-
-  canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const [mx, my] = toMath(sx, sy);
-    hoverCoords.textContent = '(' + mx.toFixed(1) + ', ' + my.toFixed(1) + ')';
-    hoverCoords.style.opacity = '1';
-  });
-  canvas.addEventListener('mouseleave', () => {
-    hoverCoords.style.opacity = '0';
   });
 
-  kSlider.addEventListener('input', updateInfo);
-  bSlider.addEventListener('input', updateInfo);
-  resetBtn.addEventListener('click', () => {
-    kSlider.value = 1;
-    bSlider.value = 0;
-    updateInfo();
+  canvas.addEventListener('pointermove', e => {
+    const { px, py } = localPos(e);
+    const mx = mxOf(px), my = myOf(py);
+    const hv = $('hover');
+    hv.textContent = `(${mx.toFixed(1)}, ${my.toFixed(1)})`;
+    hv.style.opacity = '1';
+
+    if (S.drag) {
+      if (S.drag.side === 'line') {
+        setLine(S.k, S.drag.b0 + (my - S.drag.my0));
+      } else {
+        const o = S.drag.other;
+        let dx = mx - o.x;
+        if (Math.abs(dx) < 0.6) dx = 0.6 * Math.sign(dx || S.drag.side);
+        const k = clamp((my - o.y) / dx, K_MIN, K_MAX);
+        setLine(k, o.y - k * o.x);
+      }
+      return;
+    }
+    if (S.phase !== 'play') { canvas.style.cursor = 'default'; return; }
+    const hit = hitTest(px, py);
+    const prev = S.hover;
+    S.hover = typeof hit === 'number' ? hit : null;
+    canvas.style.cursor = hit === null ? 'crosshair' : 'grab';
+    if (prev !== S.hover) draw();
   });
 
-  window.addEventListener('resize', resize);
+  const endDrag = () => {
+    if (!S.drag) return;
+    S.drag = null;
+    canvas.style.cursor = 'grab';
+    draw();
+  };
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('pointerleave', () => {
+    $('hover').style.opacity = '0';
+    if (S.hover !== null) { S.hover = null; draw(); }
+  });
+
+  kSlider.addEventListener('input', () => setLine(parseFloat(kSlider.value), S.b));
+  bSlider.addEventListener('input', () => setLine(S.k, parseFloat(bSlider.value)));
+
+  $('seg').addEventListener('click', e => {
+    const m = e.target.dataset && e.target.dataset.m;
+    if (!m || !aidsOn()) return;
+    S.resid = m;
+    [...$('seg').children].forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    draw();
+  });
+
+  $('hintBtn').addEventListener('click', () => {
+    if (S.phase !== 'play') return;
+    S.hint = true; updateUI(); draw();
+  });
+
+  $('goBtn').addEventListener('click', () => (S.phase === 'play' ? lockIn() : next()));
+  $('againBtn').addEventListener('click', () => { S.scores = []; startLevel(0); });
+
+  const modal = $('modal');
+  $('lvlTable').innerHTML =
+    '<tr><th>#</th><th>Level</th><th>Points</th><th>Noise <span style="text-transform:none">σ</span></th><th>Outliers</th><th>Meter</th></tr>' +
+    LEVELS.map((L, i) => `<tr><td class="n">${i + 1}</td><td>${L.name}</td><td class="n">${L.n}</td><td class="n">${L.noise}</td><td class="n">${L.outliers || '–'}</td><td>${L.meter ? 'on' : 'off'}</td></tr>`).join('');
+  const openModal = () => modal.classList.add('show');
+  const closeModal = () => modal.classList.remove('show');
+  $('rulesBtn').addEventListener('click', openModal);
+  $('modalX').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  document.addEventListener('keydown', e => {
+    if (modal.classList.contains('show')) { if (e.key === 'Escape') closeModal(); return; }
+    if (e.key !== 'Enter' || S.phase === 'done') return;
+    e.preventDefault();
+    S.phase === 'play' ? lockIn() : next();
+  });
+
+  new ResizeObserver(resize).observe(canvas.parentElement);
+  startLevel(0);
   resize();
-  updateInfo();
+})();
 </script>
 
 </body>
