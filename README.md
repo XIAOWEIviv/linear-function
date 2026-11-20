@@ -6,9 +6,9 @@ A small game about least squares. Each level shows a scatter of noisy points. Dr
 
 ## How it works
 
-- 5 levels: warm-up, negative slope, heavy noise, small sample, outliers
+- 3 levels: warm-up, negative slope, heavy noise, small sample, outliers
 - Drag the handles to tilt the line, grab the line to slide it, or use the sliders
-- Score per level = 100 × MSE(OLS) ÷ MSE(yours), total out of 500
+- Score per level = 100 × MSE(OLS) ÷ MSE(yours), total out of 300
 - After each level, the OLS line and the noise-free true trend are revealed
 - Toggle residuals as lines or as literal squares to see what "least squares" minimizes
 - From level 3 on, the MSE meter and residual view are hidden until you lock in
