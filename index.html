@@ -161,16 +161,9 @@
   .total { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; color: var(--dim); padding: 0 0.2rem; }
   .total b { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 1.05rem; }
 
-  .overlay {
-    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
-    background: rgba(14, 16, 20, 0.82); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 1.5rem;
-  }
-  .overlay.show { display: flex; animation: pop 0.4s ease; }
-  .overlay { overflow-y: auto; }
-  @media (max-width: 480px) { .end .rows { display: none; } .end .big { font-size: 2.4rem; } }
-  .end { width: 100%; max-width: 340px; text-align: center; }
+  .modal-box.end { max-width: 420px; text-align: center; padding: 2.2rem 2rem 1.6rem; }
   .end .kicker { margin-bottom: 0.4rem; }
-  .end .big { font-family: 'JetBrains Mono', monospace; font-size: 3rem; font-weight: 700; color: var(--you); line-height: 1.1; }
+  .end .big { font-family: 'JetBrains Mono', monospace; font-size: 3.4rem; font-weight: 700; color: var(--you); line-height: 1.1; }
   .end .big small { font-size: 1rem; color: var(--dim); }
   .end .pct { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--dim); margin-top: 0.15rem; }
   .end .rank { font-size: 1.15rem; font-weight: 700; margin: 0.8rem 0 0.3rem; }
@@ -239,7 +232,7 @@
 <header>
   <div class="kicker">Least squares, by hand</div>
   <h1>Fit the <span>Line</span></h1>
-  <p class="sub">Five datasets. Drag the line to fit each one, then see how close you got to ordinary least squares (OLS), the best possible fit.<br><button class="link" id="rulesBtn">How it works &amp; scoring rules</button></p>
+  <p class="sub">Three datasets. Drag the line to fit each one, then see how close you got to ordinary least squares (OLS), the best possible fit.<br><button class="link" id="rulesBtn">How it works &amp; scoring rules</button></p>
 </header>
 
 <div class="main">
@@ -248,17 +241,6 @@
     <div class="canvas-wrap">
       <canvas id="c"></canvas>
       <div class="hover-coords" id="hover"></div>
-      <div class="overlay" id="overlay">
-        <div class="end">
-          <div class="kicker">Final score</div>
-          <div class="big" id="endTotal">0<small> / 500</small></div>
-          <div class="pct" id="endPct"></div>
-          <div class="rank" id="endRank"></div>
-          <div class="quip" id="endQuip"></div>
-          <div class="rows" id="endRows"></div>
-          <button class="btn primary" id="againBtn" style="width:100%">Play again with new data</button>
-        </div>
-      </div>
     </div>
     <div class="legend">
       <div class="item"><span class="sw" style="background:var(--you)"></span>Your fit</div>
@@ -319,7 +301,7 @@
       <div class="lesson" id="lesson"></div>
     </div>
 
-    <div class="total"><span>Total</span><b id="total">0 / 500</b></div>
+    <div class="total"><span>Total</span><b id="total">0 / 300</b></div>
   </div>
 </div>
 
@@ -327,6 +309,20 @@
   Drag the round handles to tilt the line · grab the line itself to slide it · <kbd>Enter</kbd> to lock in<br>
   Made by <a href="https://github.com/xiaoweiviv">xiaoweiviv</a>
 </footer>
+
+<div class="modal" id="endModal" role="dialog" aria-modal="true" aria-label="Final score">
+  <div class="modal-box end">
+    <button class="modal-x" id="endX" aria-label="Close">×</button>
+    <div class="kicker">Final score</div>
+    <div class="big" id="endTotal">0<small> / 300</small></div>
+    <div class="pct" id="endPct"></div>
+    <div class="rank" id="endRank"></div>
+    <div class="quip" id="endQuip"></div>
+    <div class="rows" id="endRows"></div>
+    <button class="btn primary" id="againBtn" style="width:100%">Play again with new data</button>
+    <button class="link" id="reviewBtn" style="margin-top:0.8rem;font-size:0.8rem">Close and review the last level</button>
+  </div>
+</div>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal-box">
@@ -354,7 +350,7 @@
     <ul>
       <li>Matching OLS exactly gives 100. Twice its error gives 50.</li>
       <li>You are scored against <span class="c-ols">OLS</span>, not the true trend, because you and OLS see the same data.</li>
-      <li>Scores are clamped to 0–100 per level, so the total is out of 500.</li>
+      <li>Each level is worth 0–100 points. Your final rating is based on your average, out of 100.</li>
       <li>Stars: ★★★ ≥ 95, ★★ ≥ 80, ★ ≥ 60.</li>
       <li><b>Meter</b> means the live MSE / R² readout <em>and</em> the residual Lines / Squares view. On meter-off levels both stay hidden until you lock in; after that you can turn them on to review your fit.</li>
       <li>R² = 1 − (your squared error ÷ squared error of a flat line at ȳ). It can go negative if your line is worse than that flat line.</li>
@@ -377,18 +373,12 @@
   const K_MIN = -3, K_MAX = 3, B_MIN = -9, B_MAX = 9;
 
   const LEVELS = [
-    { name: 'Warm-up', n: 12, noise: 0.7, slope: [0.4, 1.1], sign: 1, outliers: 0, meter: true,
-      desc: 'A clean upward trend. Drag the round handles until the line runs through the middle of the cloud. The MSE meter shows how you are doing.',
-      lesson: 'The OLS line always passes through the centroid (x̄, ȳ), the average point. That is what the Hint shows you.' },
-    { name: 'Downhill', n: 16, noise: 1.3, slope: [0.4, 1.2], sign: -1, outliers: 0, meter: true,
-      desc: 'Negative slope and more scatter. Last level with the meter on, so try the Squares view and watch them shrink.',
-      lesson: 'MSE is the average of those squares. "Least squares" literally means making their total area as small as possible.' },
-    { name: 'Cloudy', n: 30, noise: 2.4, slope: [0.2, 0.9], sign: 0, outliers: 0, meter: false,
-      desc: 'Heavy noise, and from here on the meter is off: no MSE readout and no residual view until you lock in. Trust the overall shape, not individual points.',
-      lesson: 'With lots of noise, R² is low even for the best line. A low R² does not mean the fit is wrong; the data is just noisy. Compare the cyan line with the dashed true trend.' },
-    { name: 'Sparse', n: 6, noise: 1.6, slope: [0.3, 1.2], sign: 0, outliers: 0, meter: false,
-      desc: 'Only six points. Each one pulls hard on the fit.',
-      lesson: 'With six points, even the best fit can land far from the true trend (dashed). Small samples give shaky estimates: the standard error of the slope shrinks roughly like 1/√n.' },
+    { name: 'Warm-up', n: 12, noise: 0.7, slope: [0.4, 1.1], sign: 0, outliers: 0, meter: true,
+      desc: 'A clean trend with the MSE meter on. Drag the round handles until the line runs through the middle of the cloud. Try the Squares view and watch them shrink.',
+      lesson: 'MSE is the average area of those squares, so "least squares" literally means making their total area as small as possible. The OLS line also always passes through the average point (x̄, ȳ). That is what the hint shows.' },
+    { name: 'Cloudy', n: 24, noise: 2.2, slope: [0.2, 0.9], sign: 0, outliers: 0, meter: false,
+      desc: 'Heavy noise, and from here on the meter is off: no MSE readout and no residual view until you lock in. Trust the overall shape, not single points.',
+      lesson: 'With lots of noise, R² is low even for the best line. A low R² does not mean the fit is wrong; the data is just noisy. Notice the cyan OLS line and the dashed true trend also disagree: noise moves the estimate.' },
     { name: 'Outliers', n: 14, noise: 0.8, slope: [0.3, 1.0], sign: 0, outliers: 2, meter: false,
       desc: 'Two points do not belong here. But you are scored against OLS, and OLS cannot tell which ones they are.',
       lesson: 'See how OLS got pulled toward the pink outliers? Squaring makes big misses very expensive, so a few bad points can drag the whole line. Robust methods like Huber loss or Theil–Sen are built to resist this.' },
@@ -738,14 +728,14 @@
     return 'The squares punished that one. See where the cyan line went.';
   }
 
-  // [min total out of 500, title, quip]
+  // [min average out of 100, title, quip]
   const RANKS = [
-    [490, 'Suspiciously perfect', 'Be honest: are you running <code>np.polyfit()</code> in your head?'],
-    [450, 'Human regression engine', 'Eagle-eyed and factory-calibrated. Frankly, more AI than the AI.'],
-    [400, 'Top-tier eyeballing', 'You out-fit 87% of humans.<small>*Sample size: 1. Confidence interval: vibes.</small>'],
-    [350, 'Very solid', 'Small, well-behaved residuals. Somewhere, a stats professor nods approvingly.'],
-    [300, 'Passing grade', 'You and the data are on speaking terms. Not friends yet, but it\u2019s a start.'],
-    [200, 'Respect the math', 'Statistics 1, intuition 0. Now you know why we let the computer do this.'],
+    [98, 'Suspiciously perfect', 'Be honest: are you running <code>np.polyfit()</code> in your head?'],
+    [90, 'Human regression engine', 'Eagle-eyed and factory-calibrated. Frankly, more AI than the AI.'],
+    [80, 'Top-tier eyeballing', 'You out-fit 87% of humans.<small>*Sample size: 1. Confidence interval: vibes.</small>'],
+    [70, 'Very solid', 'Small, well-behaved residuals. Somewhere, a stats professor nods approvingly.'],
+    [60, 'Passing grade', 'You and the data are on speaking terms. Not friends yet, but it\u2019s a start.'],
+    [40, 'Respect the math', 'Statistics 1, intuition 0. Now you know why we let the computer do this.'],
     [0,   'The residuals won', 'The squared errors send their regards. Fancy a rematch?'],
   ];
   const rankFor = t => RANKS.find(r => t >= r[0]);
@@ -757,8 +747,7 @@
     S.best = ols(S.data.pts);
     S.k = 0; S.b = 0;
     S.phase = 'play'; S.hint = false; S.animT = 1;
-    $('overlay').classList.remove('show');
-    $('goBtn').disabled = false;
+    $('endModal').classList.remove('show');
     updateUI(); draw();
   }
 
@@ -785,16 +774,18 @@
     S.phase = 'done';
     const total = S.scores.reduce((a, b) => a + b, 0);
     $('endTotal').innerHTML = `${total}<small> / ${LEVELS.length * 100}</small>`;
-    const [, title, quip] = rankFor(total);
-    $('endPct').textContent = `= ${Math.round(total / LEVELS.length)} / 100`;
+    const avg = Math.round(total / LEVELS.length);
+    const [, title, quip] = rankFor(avg);
+    $('endPct').textContent = `= ${avg} / 100`;
     $('endRank').textContent = title;
     $('endQuip').innerHTML = quip;
     $('endRows').innerHTML = LEVELS.map((L, i) =>
       `<div class="row"><span>${i + 1}. ${L.name}</span><span>${S.scores[i]} <span style="color:var(--you)">${'★'.repeat(starCount(S.scores[i]))}</span></span></div>`
     ).join('');
-    $('overlay').classList.add('show');
-    $('goBtn').disabled = true;
+    openEnd();
   }
+  const openEnd = () => { $('endModal').classList.add('show'); updateUI(); };
+  const closeEnd = () => { $('endModal').classList.remove('show'); updateUI(); };
 
   function setLine(k, b) {
     S.k = clamp(k, K_MIN, K_MAX);
@@ -890,7 +881,7 @@
     S.hint = true; updateUI(); draw();
   });
 
-  $('goBtn').addEventListener('click', () => (S.phase === 'play' ? lockIn() : next()));
+  $('goBtn').addEventListener('click', () => (S.phase === 'play' ? lockIn() : S.phase === 'done' ? openEnd() : next()));
   $('againBtn').addEventListener('click', () => { S.scores = []; startLevel(0); });
 
   const modal = $('modal');
@@ -901,11 +892,16 @@
   const closeModal = () => modal.classList.remove('show');
   $('rulesBtn').addEventListener('click', openModal);
   $('modalX').addEventListener('click', closeModal);
+  $('endX').addEventListener('click', closeEnd);
+  $('reviewBtn').addEventListener('click', closeEnd);
+  $('endModal').addEventListener('click', e => { if (e.target === $('endModal')) closeEnd(); });
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
   document.addEventListener('keydown', e => {
     if (modal.classList.contains('show')) { if (e.key === 'Escape') closeModal(); return; }
-    if (e.key !== 'Enter' || S.phase === 'done') return;
+    if ($('endModal').classList.contains('show')) { if (e.key === 'Escape') closeEnd(); return; }
+    if (e.key !== 'Enter') return;
+    if (S.phase === 'done') { e.preventDefault(); openEnd(); return; }
     e.preventDefault();
     S.phase === 'play' ? lockIn() : next();
   });
